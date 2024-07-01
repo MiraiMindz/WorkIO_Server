@@ -1,0 +1,10 @@
+go 1.22
+
+use (
+    .
+    ./proto
+    ./proto/out
+    ./utils
+    ./utils/security
+    ./utils/security/crypto
+)
