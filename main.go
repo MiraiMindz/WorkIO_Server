@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
-	"strings"
 
 	"google.golang.org/grpc"
 
@@ -21,22 +19,28 @@ var (
 	backendPrivateKey = ucrypto.LoadPrivateKey("BACKEND_PRIVATE_KEY", keysPassword)
 )
 
-type TestProto struct {
-	out.UnimplementedTestServer
+type AuthenticationProto struct {
+	out.UnimplementedAuthenticationServer
 }
 
-func (tp *TestProto) TestFunc(ctx context.Context, req *out.TestRequest) (*out.TestResponse, error) {
-	msg := req.GetMessage()
-	decodedMessage := ucrypto.DecodeBase64(msg)
-	decryptedMessage := ucrypto.Decrypt(backendPrivateKey, decodedMessage)
+func (ap *AuthenticationProto) AuthenticateLogin(ctx context.Context, req *out.Login) (*out.Token, error) {
+	var token string
+	email := req.GetEmail()
+	password := req.GetPassword()
+	decodedDecryptedEmail := ucrypto.DecodeDecrypt(backendPrivateKey, email)
+	decodedDecryptedPassword := ucrypto.DecodeDecrypt(backendPrivateKey, password)
 
-	res := strings.ToUpper(fmt.Sprintf("Server Response to %s", string(decryptedMessage)))
+	if string(decodedDecryptedEmail) == "" && string(decodedDecryptedPassword) == "" {
+		token = "AUTHENTICATED"
+	} else {
+		token = "UNAUTHORIZED"
+	}
 
-	encryptedResponse := ucrypto.Encrypt(apiPublicKey, []byte(res))
-	encodedResponse := ucrypto.EncodeBase64(encryptedResponse)
+	encryptedToken := ucrypto.Encrypt(apiPublicKey, []byte(token))
+	encodedToken := ucrypto.EncodeBase64(encryptedToken)
 
 
-	return &out.TestResponse{Message: encodedResponse}, nil
+	return &out.Token{Token: encodedToken}, nil
 }
 
 func main()  {
@@ -46,7 +50,7 @@ func main()  {
 	}
 
 	s := grpc.NewServer()
-	out.RegisterTestServer(s, &TestProto{})
+	out.RegisterAuthenticationServer(s, &AuthenticationProto{})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
