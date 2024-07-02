@@ -1,10 +1,13 @@
-go 1.22
+go 1.22.4
 
 use (
-    .
-    ./proto
-    ./proto/out
-    ./utils
-    ./utils/security
-    ./utils/security/crypto
+	.
+	./utils/database
+	./proto
+	./proto/out
+	./utils
+	./utils/security
+	./utils/security/crypto
+	./utils/security/authentication
+	./utils/security/hash
 )

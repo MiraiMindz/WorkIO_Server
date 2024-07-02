@@ -1,13 +1,18 @@
 package crypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -88,4 +93,49 @@ func DecodeDecryptFromEncryptEncodeTo(privateKey *rsa.PrivateKey, publicKey *rsa
 	decryptedDecodedData := DecodeDecrypt(privateKey, data)
 	encryptedEncodedData := EncryptEncode(publicKey, decryptedDecodedData)
 	return encryptedEncodedData
+}
+
+func EncryptAESGCM(key, plaintext []byte) ([]byte) {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        log.Fatalln(err.Error())
+    }
+
+    nonce := make([]byte, 12) // AES-GCM standard nonce size is 12 bytes
+    if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		log.Fatalln(err.Error())
+    }
+
+    aesgcm, err := cipher.NewGCM(block)
+    if err != nil {
+		log.Fatalln(err.Error())
+    }
+
+    ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+    return append(nonce, ciphertext...)
+}
+
+func DecryptAESGCM(key, ciphertext []byte) ([]byte) {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+		log.Fatalln(err.Error())
+    }
+
+    if len(ciphertext) < 12 {
+		log.Fatalln(errors.New("ciphertext too short"))
+    }
+
+    nonce, ciphertext := ciphertext[:12], ciphertext[12:]
+
+    aesgcm, err := cipher.NewGCM(block)
+    if err != nil {
+		log.Fatalln(err.Error())
+    }
+
+    plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+    if err != nil {
+		log.Fatalln(err.Error())
+    }
+
+    return plaintext
 }
